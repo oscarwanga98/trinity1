@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>WebSocket Test</title>
+  </head>
+  <body>
+    <h1>WebSocket Test</h1>
+    <button id="driverUpdateBtn">Send Driver Update</button>
+    <button id="riderRequestBtn">Send Rider Request</button>
+
+    <script>
+      const ws = new WebSocket("ws://localhost:8080");
+
+      ws.onopen = () => {
+        console.log("Connected to WebSocket server");
+      };
+
+      ws.onmessage = (event) => {
+        console.log("Received:", event.data);
+      };
+
+      document.getElementById("driverUpdateBtn").onclick = () => {
+        const message = JSON.stringify({
+          type: "driver-location-update",
+          driverId: "driver1",
+          latitude: 40.712776,
+          longitude: -74.005974,
+        });
+        ws.send(message);
+      };
+
+      document.getElementById("riderRequestBtn").onclick = () => {
+        const message = JSON.stringify({
+          type: "rider-request",
+          riderId: "rider1",
+          latitude: 40.712776,
+          longitude: -74.005974,
+        });
+        ws.send(message);
+      };
+    </script>
+  </body>
+</html>
