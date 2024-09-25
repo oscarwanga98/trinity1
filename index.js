@@ -9,36 +9,22 @@ const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
 // Redis setup
-
-// const redisClient = Redis.createClient({
-//   host: "127.0.0.1", // or 'localhost'
-//   port: 6379, // Default Redis port
-// });
-
 const redisClient = Redis.createClient({
   password: process.env.REDIS_PASSWORD,
   socket: {
-    host: process.env.REDIS_HOST, // Use environment variable or default to '127.0.0.1'
-    port: process.env.REDIS_PORT, // Use environment variable or default to port 6379}
+    host: process.env.REDIS_HOST,
+    port: process.env.REDIS_PORT,
   },
 });
 
-// const redisClient = Redis.createClient({
-//   password: "67BwfZE74KKpDNmX7fqnKzK68wowUOJ0",
-//   socket: {
-//     host: "redis-14469.c16.us-east-1-3.ec2.redns.redis-cloud.com",
-//     port: 14469,
-//   },
-// });
 // Function to start Redis client connection
 async function startRedisClient() {
   try {
-    // Await connection to Redis
     await redisClient.connect();
     console.log("Connected to Redis");
   } catch (error) {
     console.error("Failed to connect to Redis:", error);
-    process.exit(1); // Exit the process if Redis connection fails
+    process.exit(1);
   }
 }
 
@@ -81,6 +67,32 @@ wss.on("connection", (ws) => {
       ws.send(JSON.stringify({ type: "error", message: "Server error" }));
     }
   });
+});
+
+// New HTTP route to get nearby drivers for a rider
+app.get("/nearby-drivers", async (req, res) => {
+  const { latitude, longitude } = req.query;
+
+  if (!latitude || !longitude) {
+    return res.status(400).send("Latitude and longitude are required.");
+  }
+
+  try {
+    const riderH3Index = h3.latLngToCell(
+      Number(latitude),
+      Number(longitude),
+      9
+    );
+
+    // Fetch nearby drivers' IDs from Redis
+    const nearbyDrivers = await getNearbyDrivers(riderH3Index);
+    const driverIds = nearbyDrivers.map((driver) => driver.driverId);
+
+    res.json({ driverIds });
+  } catch (error) {
+    console.error("Error fetching nearby drivers:", error);
+    res.status(500).send("Server error fetching nearby drivers.");
+  }
 });
 
 // Helper to get nearby drivers
@@ -132,7 +144,7 @@ app.get("/drivers", async (req, res) => {
 startRedisClient().then(() => {
   // Start the server after the Redis client is ready
   server.listen(8080, () => {
-    console.log("Server running on http://localhost:8080");
+    console.log("Server running on port 8080");
   });
 });
 
